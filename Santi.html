@@ -1,0 +1,984 @@
+﻿<!DOCTYPE html>
+<html lang="it" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Santo del Giorno</title>
+    
+    <!-- 1. Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- 2. React e ReactDOM -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    
+    <!-- 3. Babel (per tradurre JSX) - ERRORE DI BATTITURA CORRETTO QUI -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- 4. html2canvas (per lo screenshot) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    
+    <!-- 5. Google Fonts: Playfair Display (Serif) e Inter (Sans-serif) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+    
+    <!-- 6. Configurazione Tailwind personalizzata -->
+    <script>
+        tailwind.config = {
+            darkMode: 'class', // Abilita la dark mode basata su una classe CSS
+            theme: {
+                extend: {
+                    fontFamily: {
+                        'sans': ['Inter', 'sans-serif'],
+                        'serif': ['Playfair Display', 'serif'],
+                    },
+                    colors: {
+                        'brand-gold': '#B89B74',
+                        'brand-blue': '#3A4A68',
+                    }
+                },
+            },
+        };
+    </script>
+</head>
+<body class="h-full bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
+    
+    <!-- Contenitore per l'app React -->
+    <div id="root" class="h-full"></div>
+
+    <!-- Script dell'applicazione React (con JSX) - DA QUI DEVE ESSERE 'text/babel' -->
+    <script type="text/babel">
+
+        const { useState, useEffect, useMemo, useCallback } = React;
+
+        // --- DATABASE LOCALE DEI NOMI (V11 - Corretto 12 Nov) ---
+        const SAINT_NAMES_DB = {
+            '1-1': 'Maria (madre di Gesù)',
+            '1-2': 'Basilio Magno',
+            '1-3': 'Genoveffa (santa)',
+            '1-4': 'Ermete (martire)',
+            '1-5': 'Giovanni Nepomuceno Neumann',
+            '1-6': 'Epifania',
+            '1-7': 'Raimondo di Peñafort',
+            '1-8': 'Severino (abate)',
+            '1-9': 'Adriano di Canterbury',
+            '1-10': "Aldo di Haselbury",
+            '1-11': 'Paolo di Tebe',
+            '1-12': 'Marguerite Bourgeoys',
+            '1-13': 'Ilario di Poitiers',
+            '1-14': 'Felice di Nola',
+            '1-15': 'Mauro di Subiaco',
+            '1-16': 'Marcello I',
+            '1-17': 'Antonio abate',
+            '1-18': 'Prisca (santa)',
+            '1-19': 'Mario (martire)',
+            '1-20': 'Fabiano (papa)',
+            '1-21': 'Agnese di Roma',
+            '1-22': 'Vincenzo di Saragozza',
+            '1-23': 'Emerenziana',
+            '1-24': 'Francesco di Sales',
+            '1-25': 'Conversione di san Paolo',
+            '1-26': 'Timoteo di Efeso',
+            '1-27': 'Angela Merici',
+            '1-28': "Tommaso d'Aquino",
+            '1-29': "Costanzo d'Aquila",
+            '1-30': 'Martina di Roma',
+            '1-31': 'Giovanni Bosco',
+            '2-1': 'Vernate (martire)',
+            '2-2': 'Presentazione di Gesù al Tempio',
+            '2-3': 'Biagio di Sebaste',
+            '2-4': 'Giovanni de Britto',
+            '2-5': 'Agata di Catania',
+            '2-6': 'Paolo Miki',
+            '2-7': 'Riccardo di Wessex',
+            '2-8': 'Girolamo Emiliani',
+            '2-9': 'Apollonia di Alessandria',
+            '2-10': 'Scolastica',
+            '2-11': 'Nostra Signora di Lourdes',
+            '2-12': 'Eulalia di Barcellona',
+            '2-13': 'Fosca di Ravenna',
+            '2-14': 'Valentino di Terni',
+            '2-15': 'Faustino e Giovita',
+            '2-16': 'Giuliana di Nicomedia',
+            '2-17': 'Aleandro di Fermo',
+            '2-18': 'Simeone di Gerusalemme',
+            '2-19': 'Corrado Confalonieri',
+            '2-20': "Eleuterio (martire)",
+            '2-21': 'Pier Damiani',
+            '2-22': 'Cattedra di San Pietro',
+            '2-23': 'Policarpo di Smirne',
+            '2-24': 'Sergio di Cesarea',
+            '2-25': 'Cesario di Nazianzo',
+            '2-26': 'Alessandro di Alessandria',
+            '2-27': 'Leandro di Siviglia',
+            '2-28': 'Rodolfo di Gubbio',
+            '2-29': 'Osvaldo di Worcester',
+            '3-1': 'Albino di Angers',
+            '3-2': 'Carlo il Buono',
+            '3-3': 'Cunegonda di Lussemburgo',
+            '3-4': 'Casimiro di Polonia',
+            '3-5': 'Adriano di Cesarea',
+            '3-6': 'Coletta Boylet',
+            '3-7': 'Perpetua e Felicita',
+            '3-8': 'Giovanni di Dio',
+            '3-9': 'Francesca Romana',
+            '3-10': 'Macario di Gerusalemme',
+            '3-11': 'Costantino di Montecassino',
+            '3-12': 'Luigi Orione',
+            '3-13': 'Rodrigo di Cordova',
+            '3-14': 'Matilde di Germania',
+            '3-15': 'Luisa de Marillac',
+            '3-16': 'Eriberto di Colonia',
+            '3-17': 'Patrizio di Irlanda',
+            '3-18': 'Cirillo di Gerusalemme',
+            '3-19': 'Giuseppe (padre di Gesù)',
+            '3-20': 'Claudio de la Colombière',
+            '3-21': 'Nicola da Flüe',
+            '3-22': 'Lea di Roma',
+            '3-23': 'Turibio de Mongrovejo',
+            '3-24': 'Caterina di Svezia',
+            '3-25': 'Annunciazione',
+            '3-26': 'Emanuele (martire)',
+            '3-27': 'Ruperto di Salisburgo',
+            '3-28': 'Sisto III',
+            '3-29': 'Secondo di Asti',
+            '3-30': 'Giovanni Climaco',
+            '3-31': 'Beniamino di Persia',
+            '4-1': 'Ugo di Grenoble',
+            '4-2': 'Francesco da Paola',
+            '4-3': 'Riccardo di Chichester',
+            '4-4': 'Isidoro di Siviglia',
+            '4-5': 'Vincenzo Ferrer',
+            '4-6': 'Guglielmo di Eskill',
+            '4-7': 'Giovanni Battista de La Salle',
+            '4-8': 'Giulia Billiart',
+            '4-9': 'Ulderico di Zell',
+            '4-10': 'Fulberto di Chartres',
+            '4-11': 'Stanislao di Cracovia',
+            '4-12': 'Zeno di Verona',
+            '4-13': 'Martino I',
+            '4-14': 'Liduvina',
+            '4-15': 'Damiano de Veuster',
+            '4-16': 'Bernadette Soubirous',
+            '4-17': 'Roberto di La Chaise-Dieu',
+            '4-18': 'Galdino della Sala',
+            '4-19': 'Leone IX',
+            '4-20': 'Agnese da Montepulciano',
+            '4-21': "Anselmo d'Aosta",
+            '4-22': 'Leonida di Alessandria',
+            '4-23': 'Giorgio di Lydda',
+            '4-24': 'Fedele da Sigmaringen',
+            '4-25': 'Marco (evangelista)',
+            '4-26': 'Cleto (papa)',
+            '4-27': 'Zita',
+            '4-28': 'Luigi Maria Grignion de Montfort',
+            '4-29': 'Caterina da Siena',
+            '4-30': 'Pio V',
+            '5-1': 'Giuseppe lavoratore',
+            '5-2': 'Atanasio di Alessandria',
+            '5-3': 'Filippo (apostolo)',
+            '5-4': 'Florian di Lorch',
+            '5-5': 'Angelo da Gerusalemme',
+            '5-6': 'Domenico Savio',
+            '5-7': 'Gisela di Baviera',
+            '5-8': 'Michele (arcangelo)',
+            '5-9': 'Isaia (profeta)',
+            '5-10': 'Antonino di Firenze',
+            '5-11': 'Ignazio da Laconi',
+            '5-12': 'Nereo e Achilleo',
+            '5-13': 'Nostra Signora di Fatima',
+            '5-14': 'Mattia (apostolo)',
+            '5-15': 'Dionigi di Alessandria',
+            '5-16': 'Giovanni Nepomuceno',
+            '5-17': 'Pasquale Baylon',
+            '5-18': 'Giovanni I (papa)',
+            '5-19': 'Crispino da Viterbo',
+            '5-20': 'Bernardino da Siena',
+            '5-21': 'Costanzo di Capri',
+            '5-22': 'Rita da Cascia',
+            '5-23': 'Giovanni Battista de Rossi',
+            '5-24': 'Maria Ausiliatrice',
+            '5-25': 'Beda il Venerabile',
+            '5-26': 'Filippo Neri',
+            '5-27': 'Agostino di Canterbury',
+            '5-28': 'Germano di Parigi',
+            '5-29': 'Ubaldo Baldassini',
+            '5-30': "Giovanna d'Arco",
+            '5-31': 'Visitazione della Beata Vergine Maria',
+            '6-1': 'Giustino (martire)',
+            '6-2': 'Marcellino e Pietro (martiri)',
+            '6-3': 'Carlo Lwanga',
+            '6-4': 'Francesco Caracciolo',
+            '6-5': 'Bonifacio di Magonza',
+            '6-6': 'Norberto di Xanten',
+            '6-7': 'Antonio Maria Gianelli',
+            '6-8': 'Medardo di Saint-Quentin',
+            '6-9': 'Efraim il Siro',
+            '6-10': 'Massimo di Napoli',
+            '6-11': 'Barnaba (apostolo)',
+            '6-12': 'Leone III (papa)',
+            '6-13': 'Antonio di Padova',
+            '6-14': 'Metodio di Costantinopoli',
+            '6-15': 'Vito di Lucania',
+            '6-16': 'Quirico e Giulitta',
+            '6-17': 'Ranieri di Pisa',
+            '6-18': 'Gregorio Giovanni Barbarigo',
+            '6-19': 'Romualdo',
+            '6-20': 'Silverio (papa)',
+            '6-21': 'Luigi Gonzaga',
+            '6-22': 'Paolino di Nola',
+            '6-23': 'Giovanni da Matera',
+            '6-24': 'Natività di san Giovanni Battista',
+            '6-25': "Prospero d'Aquitania",
+            '6-26': 'Josemaría Escrivá',
+            '6-27': 'Cirillo e Metodio',
+            '6-28': 'Ireneo di Lione',
+            '6-29': 'Pietro (apostolo)',
+            '6-30': 'Primi martiri della Chiesa di Roma',
+            '7-1': 'Aronne',
+            '7-2': 'Otone di Bamberga',
+            '7-3': 'Tommaso (apostolo)',
+            '7-4': 'Elisabetta del Portogallo',
+            '7-5': 'Antonio Maria Zaccaria',
+            '7-6': 'Maria Goretti',
+            '7-7': 'Claudio di Condat',
+            '7-8': 'Adriano III (papa)',
+            '7-9': 'Veronica Giuliani',
+            '7-10': 'Amabile Visintainer',
+            '7-11': 'Benedetto da Norcia',
+            '7-12': 'Giovanna Francesca de Chantal',
+            '7-13': 'Enrico II',
+            '7-14': 'Camillo de Lellis',
+            '7-15': 'Bonaventura da Bagnoregio',
+            '7-16': 'Beata Vergine del Carmelo',
+            '7-17': 'Alessio di Roma',
+            '7-18': 'Federico di Utrecht',
+            '7-19': 'Arsenio il Grande',
+            '7-20': 'Elia (profeta)',
+            '7-21': 'Lorenzo da Brindisi',
+            '7-22': 'Maria Maddalena',
+            '7-23': 'Brigida di Svezia',
+            '7-24': 'Cristina di Bolsena',
+            '7-25': 'Giacomo il Maggiore',
+            '7-26': 'Anna',
+            '7-27': 'Pantaleone di Nicomedia',
+            '7-28': 'Nazario e Celso',
+            '7-29': 'Marta di Betania',
+            '7-30': 'Pietro Crisologo',
+            '7-31': 'Ignazio di Loyola',
+            '8-1': 'Alfonso Maria de Liguori',
+            '8-2': 'Eusebio di Vercelli',
+            '8-3': 'Lidia di Tiatira',
+            '8-4': 'Giovanni Maria Vianney',
+            '8-5': 'Dedicazione della basilica di Santa Maria Maggiore',
+            '8-6': 'Trasfigurazione di Gesù',
+            '8-7': 'Claudina Thévenet',
+            '8-8': 'Domenico di Guzmán',
+            '8-9': 'Teresa Benedetta della Croce',
+            '8-10': 'Lorenzo di Roma',
+            '8-11': "Chiara d'Assisi",
+            '8-12': 'Euplio di Catania',
+            '8-13': 'Ippolito di Roma',
+            '8-14': 'Massimiliano Maria Kolbe',
+            '8-15': 'Assunzione di Maria',
+            '8-16': 'Rocco di Montpellier',
+            '8-17': 'Chiara da Montefalco',
+            '8-18': 'Elena (imperatrice)',
+            '8-19': 'Giovanni Eudes',
+            '8-20': 'Bernardo di Chiaravalle',
+            '8-21': 'Pio X',
+            '8-22': 'Maria Regina',
+            '8-23': 'Rosa da Lima',
+            '8-24': 'Bartolomeo (apostolo)',
+            '8-25': 'Giuseppe Calasanzio',
+            '8-26': 'Alessandro di Bergamo',
+            '8-27': 'Monica (santa)',
+            '8-28': "Agostino d'Ippona",
+            '8-29': 'Decollazione di Giovanni Battista',
+            '8-30': 'Felice di Roma',
+            '8-31': 'Giovanni Gualberto',
+            '9-1': 'Egidio abate',
+            '9-2': 'Elpidio di Atella',
+            '9-3': 'Gregorio Magno',
+            '9-4': 'Mosè',
+            '9-5': 'Madre Teresa di Calcutta',
+            '9-6': 'Bertrando di Saint-Geniès',
+            '9-7': 'Grato di Aosta',
+            '9-8': 'Natività di Maria',
+            '9-9': 'Pietro Claver',
+            '9-10': 'Nicola da Tolentino',
+            '9-11': 'Proto e Giacinto',
+            '9-12': 'Nome di Maria',
+            '9-13': 'Giovanni Crisostomo',
+            '9-14': 'Esaltazione della Santa Croce',
+            '9-15': 'Maria Addolorata',
+            '9-16': 'Cornelio e Cipriano',
+            '9-17': 'Roberto Bellarmino',
+            '9-18': 'Giuseppe da Copertino',
+            '9-19': 'Gennaro di Napoli',
+            '9-20': 'Andrea Kim Taegon e compagni',
+            '9-21': 'Matteo (apostolo)',
+            '9-22': 'Maurizio di Agauno',
+            '9-23': 'Pio da Pietrelcina',
+            '9-24': 'Pietro Nolasco',
+            '9-25': 'Cleofa di Emmaus',
+            '9-26': 'Cosma e Damiano',
+            '9-27': "Vincenzo de' Paoli",
+            '9-28': 'Venceslao di Boemia',
+            '9-29': 'Michele (arcangelo)',
+            '9-30': 'Girolamo',
+            '10-1': 'Teresa di Lisieux',
+            '10-2': 'Santi Angeli Custodi',
+            '10-3': 'Gerardo di Brogne',
+            '10-4': "Francesco d'Assisi",
+            '10-5': 'Faustina Kowalska',
+            '10-6': 'Bruno di Colonia',
+            '10-7': 'Beata Vergine del Rosario',
+            '10-8': 'Pelagia di Antiochia',
+            '10-9': "Dionigi l'Areopagita",
+            '10-10': 'Daniele Comboni',
+            '10-11': 'Gioacchino Piccolomini',
+            '10-12': 'Serafino da Montegranaro',
+            '10-13': 'Edoardo il Confessore',
+            '10-14': 'Callisto I',
+            '10-15': "Teresa d'Avila",
+            '10-16': 'Edvige di Polonia',
+            '10-17': 'Ignazio di Antiochia',
+            '10-18': 'Luca (evangelista)',
+            '10-19': 'Paolo della Croce',
+            '10-20': 'Irene di Tessalonica',
+            '10-21': 'Orsola di Colonia',
+            '10-22': 'Giovanni Paolo II',
+            '10-23': 'Giovanni da Capestrano',
+            '10-24': 'Antonio Maria Claret',
+            '10-25': 'Crispino e Crispiniano',
+            '10-26': 'Demetrio di Tessalonica',
+            '10-27': 'Papa Evaristo',
+            '10-28': 'Simone (apostolo)',
+            '10-29': 'Narciso di Gerusalemme',
+            '10-30': 'Marciano di Siracusa',
+            '10-31': 'Volfango di Ratisbona',
+            '11-1': 'Tutti i Santi',
+            '11-2': 'Commemorazione dei defunti',
+            '11-3': 'Martino de Porres',
+            '11-4': 'Carlo Borromeo',
+            '11-5': 'Zaccaria (profeta minore)',
+            '11-6': 'Leonardo di Noblac',
+            '11-7': 'Ernesto di Zwiefalten',
+            '11-8': 'Goffredo di Amiens',
+            '11-9': 'Dedicazione della basilica lateranense',
+            '11-10': 'Leone Magno',
+            '11-11': 'Martino di Tours',
+            '11-12': 'Giosafat Kuncevič', // CORRETTO
+            '11-13': "Sant'Omobono",
+            '11-14': 'Giovanni Liccio',
+            '11-15': 'Alberto Magno',
+            '11-16': 'Margherita di Scozia',
+            '11-17': "Elisabetta d'Ungheria",
+            '11-18': 'Dedicazione delle basiliche di San Pietro e San Paolo',
+            '11-19': 'Abdia (profeta)',
+            '11-20': 'Edmondo di Abingdon',
+            '11-21': 'Presentazione della Beata Vergine Maria',
+            '11-22': 'Cecilia di Roma',
+            '11-23': 'Clemente I',
+            '11-24': 'Andrea Dung-Lac e compagni',
+            '11-25': "Caterina d'Alessandria",
+            '11-26': 'Leonardo da Porto Maurizio',
+            '11-27': 'Virginio di Roma',
+            '11-28': 'Jacopo Interciso',
+            '11-29': 'Francesco Antonio Fasani',
+            '11-30': 'Andrea (apostolo)',
+            '12-1': 'Eligio di Noyon',
+            '12-2': 'Bibiana',
+            '12-3': 'Francesco Saverio',
+            '12-4': 'Barbara (martire)',
+            '12-5': 'Saba Archimandrita',
+            '12-6': 'Nicola di Bari',
+            '12-7': 'Ambrogio di Milano',
+            '12-8': 'Immacolata Concezione',
+            '12-9': 'Juan Diego Cuauhtlatoatzin',
+            '12-10': 'Eulalia di Mérida',
+            '12-11': 'Damaso I',
+            '12-12': 'Nostra Signora di Guadalupe',
+            '12-13': 'Lucia di Siracusa', 
+            '12-14': 'Giovanni della Croce',
+            '12-15': 'Cristina di Bolsena',
+            '12-16': 'Adelaide di Borgogna',
+            '12-17': 'Giovanni de Matha',
+            '12-18': 'Malachia di Armagh',
+            '12-19': 'Dario di Nicea',
+            '12-20': 'Domenico di Silos',
+            '12-21': 'Pietro Canisio',
+            '12-22': 'Francesca Saverio Cabrini',
+            '12-23': 'Giovanni da Kety',
+            '12-24': 'Adele di Pfalzel',
+            '12-25': 'Natale',
+            '12-26': 'Stefano protomartire',
+            '12-27': 'Giovanni apostolo ed evangelista',
+            '12-28': 'Santi Innocenti',
+            '12-29': 'Davide (re di Israele)',
+            '12-30': 'Eugenia di Roma',
+            '12-31': 'Silvestro I'
+        };
+        
+        // --- SERVIZIO API ---
+        const SaintApiService = {
+            _cache: new Map(),
+
+            formatDateKey(date) {
+                return `${date.getMonth() + 1}-${date.getDate()}`;
+            },
+
+            // NUOVA Funzione Helper per filtrare E RITAGLIARE l'immagine su una canvas
+            processAndFilterImage(url) {
+                return new Promise((resolve, reject) => {
+                    const img = new Image();
+                    img.crossOrigin = 'Anonymous'; // Fondamentale per caricare immagini da altri domini
+                    
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+                        
+                        const targetSize = 1080; // Dimensione finale quadrata
+                        canvas.width = targetSize;
+                        canvas.height = targetSize;
+                        
+                        // Logica di ritaglio (object-cover object-top)
+                        const imgRatio = img.width / img.height;
+                        const canvasRatio = targetSize / targetSize; // 1
+                        
+                        let sx = 0, sy = 0, sWidth = img.width, sHeight = img.height;
+
+                        if (imgRatio > canvasRatio) { // Immagine più larga del canvas (es. landscape)
+                            sWidth = img.height * canvasRatio;
+                            sx = (img.width - sWidth) / 2; // Centra orizzontalmente
+                            sy = 0;
+                            sHeight = img.height;
+                        } else { // Immagine più alta del canvas (es. portrait)
+                            sHeight = img.width / canvasRatio;
+                            sy = 0; // Ancora in alto (object-top)
+                            sx = 0;
+                            sWidth = img.width;
+                        }
+
+                        // Applica i filtri
+                        ctx.filter = 'grayscale(1) sepia(0.3) contrast(1.25)';
+                        
+                        // Disegna l'immagine ritagliata e scalata sulla canvas
+                        ctx.drawImage(img, sx, sy, sWidth, sHeight, 0, 0, targetSize, targetSize);
+                        
+                        // Risolvi la promessa con l'immagine filtrata come dataURL
+                        resolve(canvas.toDataURL('image/png'));
+                    };
+                    
+                    img.onerror = (err) => {
+                        console.error("Errore caricamento immagine per filtro canvas", err);
+                        reject(new Error('Impossibile caricare immagine per filtrarla'));
+                    };
+                    
+                    // Aggiungi un timestamp per evitare problemi di cache del browser
+                    img.src = url + '?' + new Date().getTime();
+                });
+            },
+
+            async getSaintInfo(date) {
+                const dateKey = this.formatDateKey(date);
+
+                if (this._cache.has(dateKey)) {
+                    return this._cache.get(dateKey);
+                }
+
+                const saintName = SAINT_NAMES_DB[dateKey];
+                if (!saintName) {
+                    return {
+                        id: dateKey,
+                        name: "Nessun santo trovato",
+                        date: date.toLocaleDateString('it-IT', { day: 'numeric', month: 'long' }),
+                        anecdote: "Nessun santo inserito nel database locale per questa data.",
+                        imageUrl: `https://placehold.co/1080x1080/E0E0E0/B0B0B0?text=Data+vuota&font=playfairdisplay`
+                    };
+                }
+
+                try {
+                    // 1. Prendi l'aneddoto e l'URL dell'immagine
+                    const [anecdote, originalImageUrl] = await Promise.all([
+                        this.fetchWikipediaExtract(saintName),
+                        this.fetchWikipediaImage(saintName)
+                    ]);
+                    
+                    let finalImageUrl;
+                    if (originalImageUrl) {
+                        // 2. Se l'immagine esiste, applica filtro E RITAGLIO
+                        finalImageUrl = await this.processAndFilterImage(originalImageUrl);
+                    } else {
+                        // 3. Se non c'è immagine, usa il placeholder blu
+                        finalImageUrl = `https://placehold.co/1080x1080/6366F1/FFFFFF?text=${encodeURIComponent(saintName)}&font=playfairdisplay`;
+                    }
+
+                    const saintData = {
+                        id: dateKey,
+                        name: saintName,
+                        date: date.toLocaleDateString('it-IT', { day: 'numeric', month: 'long' }),
+                        anecdote: anecdote,
+                        imageUrl: finalImageUrl 
+                    };
+
+                    this._cache.set(dateKey, saintData);
+                    return saintData;
+
+                } catch (error) {
+                    // GESTIONE ERRORE MIGLIORATA
+                    console.error(`Errore nel recuperare i dati da Wikipedia per "${saintName}":`, error);
+                    return {
+                        id: dateKey,
+                        name: saintName, // Mostra il nome che ha fallito
+                        date: date.toLocaleDateString('it-IT', { day: 'numeric', month: 'long' }),
+                        anecdote: `Impossibile caricare i dati per "${saintName}". Causa probabile: il titolo nel DB non corrisponde a una pagina Wikipedia esatta. Correggere il DB.`,
+                        imageUrl: `https://placehold.co/1080x1080/F87171/FFFFFF?text=${encodeURIComponent(saintName)}&font=playfairdisplay` // Placeholder rosso con il nome che ha fallito
+                    };
+                }
+            },
+
+            async fetchWikipediaExtract(title) {
+                const url = `https://it.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`;
+                const response = await fetch(url, { headers: { 'Accept': 'application/json' } });
+                if (!response.ok) throw new Error(`Wikipedia summary API non OK per ${title} (status: ${response.status})`);
+                const data = await response.json();
+                return data.extract || `Nessun aneddoto trovato per ${title}.`;
+            },
+
+            async fetchWikipediaImage(title) {
+                const url = `https://it.wikipedia.org/api/rest_v1/page/media-list/${encodeURIComponent(title)}`;
+                const response = await fetch(url, { headers: { 'Accept': 'application/json' } });
+                if (!response.ok) throw new Error(`Wikipedia media API non OK per ${title} (status: ${response.status})`);
+                const data = await response.json();
+                
+                const firstImage = data.items?.find(item => item.type === 'image');
+                if (!firstImage) return null;
+
+                const imageUrl = firstImage.srcset?.[0]?.src;
+                if (!imageUrl) return null;
+                
+                if (imageUrl.startsWith('//')) {
+                    return `https:${imageUrl}`;
+                }
+                return imageUrl;
+            }
+        };
+
+        // --- GESTIONE PREFERITI ---
+        function useFavorites() {
+            const [favorites, setFavorites] = useState(() => {
+                try {
+                    const item = window.localStorage.getItem('santo-favorites');
+                    return item ? JSON.parse(item) : {};
+                } catch (error) {
+                    console.error(error);
+                    return {};
+                }
+            });
+
+            const toggleFavorite = (saintId, saintName) => {
+                setFavorites(prev => {
+                    const newFavorites = {...prev};
+                    if (newFavorites[saintId]) {
+                        delete newFavorites[saintId]; 
+                    } else {
+                        newFavorites[saintId] = saintName;
+                    }
+                    
+                    try {
+                        window.localStorage.setItem('santo-favorites', JSON.stringify(newFavorites));
+                    } catch (error) {
+                        console.error("Impossibile salvare i preferiti:", error);
+                    }
+                    
+                    return newFavorites;
+                });
+            };
+
+            const isFavorite = (saintId) => {
+                return !!favorites[saintId];
+            };
+
+            return { favorites, toggleFavorite, isFavorite };
+        }
+
+
+        // --- COMPONENTI REACT ---
+
+        function SaintCardSkeleton() {
+            return (
+                <div className="w-full max-w-md mx-auto animate-pulse">
+                    <div className="bg-gray-200 dark:bg-gray-700 aspect-square w-full rounded-lg"></div>
+                    <div className="mt-6">
+                        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-1/3 mb-3"></div>
+                        <div className="h-10 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-6"></div>
+                        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-full mb-2"></div>
+                        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-full mb-2"></div>
+                        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-5/6"></div>
+                    </div>
+                </div>
+            );
+        }
+
+        function HeartIcon({ isFavorite, ...props }) {
+            return (
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" strokeWidth="2" stroke="currentColor" fill={isFavorite ? 'currentColor' : 'none'} strokeLinecap="round" strokeLinejoin="round" {...props}>
+                    <path d="M19.5 12.572l-7.5 7.428l-7.5 -7.428a5 5 0 1 1 7.5 -6.566a5 5 0 1 1 7.5 6.572" />
+                </svg>
+            );
+        }
+
+        function SaintCard({ saint, onImageLoad, isFavorite, onToggleFavorite }) {
+            if (!saint) return null;
+            
+            const handleFavoriteClick = () => {
+                if (saint.name === "Nessun santo trovato") return;
+                onToggleFavorite(saint.id, saint.name);
+            };
+            
+            const isError = saint.anecdote.includes("Impossibile caricare i dati");
+
+            return (
+                <div className="w-full max-w-md mx-auto" id="saint-card-container"> {/* Aggiunto ID per screenshot */}
+                    <div className="bg-gray-200 dark:bg-gray-700 aspect-square w-full rounded-lg shadow-xl overflow-hidden relative">
+                        {/* L'immagine ora è un dataURL pre-filtrato e pre-ritagliato.
+                            Non servono più 'object-cover' o 'object-top' */}
+                        <img
+                            key={saint.imageUrl}
+                            src={saint.imageUrl}
+                            alt={`Immagine di ${saint.name}`}
+                            className={`w-full h-full`} 
+                            onLoad={onImageLoad}
+                            onError={(e) => {
+                                e.target.onerror = null; 
+                                e.target.src=`https://placehold.co/1080x1080/6366F1/FFFFFF?text=${encodeURIComponent(saint.name)}&font=playfairdisplay`;
+                                onImageLoad();
+                            }}
+                        />
+                        <button
+                            onClick={handleFavoriteClick}
+                            className={`absolute top-4 right-4 p-2 rounded-full transition-colors ${
+                                isFavorite 
+                                    ? 'text-red-500 bg-white/70 backdrop-blur-sm' 
+                                    : 'text-white bg-black/30 backdrop-blur-sm hover:bg-black/50'
+                            } disabled:opacity-50 disabled:text-gray-400`}
+                            aria-label="Aggiungi ai preferiti"
+                            disabled={saint.name === "Nessun santo trovato" || isError}
+                        >
+                            <HeartIcon isFavorite={isFavorite} />
+                        </button>
+                    </div>
+                    
+                    <div className="mt-6 px-2 text-gray-800 dark:text-gray-100">
+                        <p className="font-sans text-sm font-medium text-brand-gold">{saint.date}</p>
+                        <h1 className="font-serif text-4xl font-bold mt-1">{saint.name}</h1>
+                        <p className={`font-sans text-base mt-4 leading-relaxed ${isError ? 'text-red-500 dark:text-red-400' : 'text-gray-600 dark:text-gray-300'}`}>
+                            {saint.anecdote}
+                        </p>
+                    </div>
+                </div>
+            );
+        }
+        
+        function ChevronLeftIcon(props) {
+            return (
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+                    <polyline points="15 18 9 12 15 6"></polyline>
+                </svg>
+            );
+        }
+
+        function ChevronRightIcon(props) {
+            return (
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}>
+                    <polyline points="9 18 15 12 9 6"></polyline>
+                </svg>
+            );
+        }
+
+        function DateNavigator({ currentDate, onDateChange }) {
+            const handleDatePick = (event) => {
+                const pickedDate = new Date(event.target.value + "T12:00:00");
+                onDateChange(pickedDate);
+            };
+
+            const changeDay = (amount) => {
+                const newDate = new Date(currentDate);
+                newDate.setDate(newDate.getDate() + amount);
+                onDateChange(newDate);
+            };
+            
+            const formattedDate = currentDate.toLocaleDateString('it-IT', { day: 'numeric', month: 'long' });
+            const isoDate = currentDate.toISOString().split('T')[0];
+
+            return (
+                <div className="flex items-center justify-between w-full max-w-md mx-auto my-8 px-2">
+                    <button
+                        onClick={() => changeDay(-1)}
+                        className="p-3 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-brand-blue"
+                        aria-label="Giorno precedente"
+                    >
+                        <ChevronLeftIcon />
+                    </button>
+
+                    <div className="relative">
+                        <button
+                            onClick={() => document.getElementById('date-picker').click()}
+                            className="font-sans text-lg font-medium text-gray-900 dark:text-white px-4 py-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700"
+                        >
+                            {formattedDate}
+                        </button>
+                        <input
+                            type="date"
+                            id="date-picker"
+                            value={isoDate}
+                            onChange={handleDatePick}
+                            className="absolute top-0 left-0 w-full h-full opacity-0 cursor-pointer"
+                            aria-label="Scegli data"
+                        />
+                    </div>
+
+                    <button
+                        onClick={() => changeDay(1)}
+                        className="p-3 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-brand-blue"
+                        aria-label="Giorno successivo"
+                    >
+                        <ChevronRightIcon />
+                    </button>
+                </div>
+            );
+        }
+
+        function ThemeToggle({ isDarkMode, onToggle }) {
+            const Icon = isDarkMode 
+                ? (
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="5"></circle>
+                    <line x1="12" y1="1" x2="12" y2="3"></line>
+                    <line x1="12" y1="21" x2="12" y2="23"></line>
+                    <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                    <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                    <line x1="1" y1="12" x2="3" y2="12"></line>
+                    <line x1="21" y1="12" x2="23" y2="12"></line>
+                    <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                    <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                  </svg>
+                ) : (
+                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                  </svg>
+                );
+            
+            return (
+                <button
+                    onClick={onToggle}
+                    className="absolute top-4 right-4 p-3 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-brand-blue"
+                    aria-label="Cambia tema"
+                >
+                    {Icon}
+                </button>
+            );
+        }
+
+        function ShareButton({ onClick, isSharing }) {
+            const Icon = isSharing
+                ? ( // Icona Spinner
+                    <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                ) : ( // Icona Condividi
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path>
+                        <polyline points="16 6 12 2 8 6"></polyline>
+                        <line x1="12" y1="2" x2="12" y2="15"></line>
+                    </svg>
+                );
+
+            return (
+                <button
+                    onClick={onClick}
+                    disabled={isSharing}
+                    className="absolute top-4 left-4 p-3 rounded-full text-gray-500 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-brand-blue disabled:opacity-50"
+                    aria-label="Condividi"
+                >
+                    {Icon}
+                </button>
+            );
+        }
+
+
+        // --- Componente Principale App ---
+        function App() {
+            const [currentDate, setCurrentDate] = useState(new Date());
+            const [saint, setSaint] = useState(null);
+            const [isLoading, setIsLoading] = useState(true);
+            const [isTransitioning, setIsTransitioning] = useState(false);
+            const [isSharing, setIsSharing] = useState(false);
+            
+            const [isDarkMode, setIsDarkMode] = useState(() => {
+                const savedMode = localStorage.getItem('sainto-dark-mode');
+                if (savedMode) return savedMode === 'true';
+                return window.matchMedia('(prefers-color-scheme: dark)').matches;
+            });
+            
+            const { favorites, toggleFavorite, isFavorite } = useFavorites();
+            
+            useEffect(() => {
+                const root = window.document.documentElement;
+                if (isDarkMode) {
+                    root.classList.add('dark');
+                    localStorage.setItem('sainto-dark-mode', 'true');
+                } else {
+                    root.classList.remove('dark');
+                    localStorage.setItem('sainto-dark-mode', 'false');
+                }
+            }, [isDarkMode]);
+
+            const loadSaintData = (date) => {
+                setIsTransitioning(true); 
+                
+                setTimeout(() => {
+                    setIsLoading(true);
+                    setSaint(null); 
+                    
+                    SaintApiService.getSaintInfo(date)
+                        .then(data => {
+                            setSaint(data);
+                        })
+                        .catch(error => {
+                            console.error("Errore critico nel caricamento:", error);
+                            setSaint({
+                                id: 'error',
+                                name: "Errore Critico",
+                                date: date.toLocaleDateString('it-IT', { day: 'numeric', month: 'long' }),
+                                anecdote: "Impossibile caricare i dati. Riprova più tardi.",
+                                imageUrl: `https://placehold.co/1080x1080/F87171/FFFFFF?text=Errore&font=playfairdisplay`
+                            });
+                        })
+                }, 300); 
+            };
+
+            useEffect(() => {
+                loadSaintData(currentDate);
+            }, []);
+
+            const handleDateChange = (newDate) => {
+                setCurrentDate(newDate);
+                loadSaintData(newDate);
+            };
+
+            const handleImageLoaded = () => {
+                setIsLoading(false); 
+                setIsTransitioning(false);
+            };
+            
+            const handleThemeToggle = () => {
+                setIsDarkMode(prevMode => !prevMode);
+            };
+            
+            const downloadImage = (dataUrl, saint) => {
+                const a = document.createElement('a');
+                a.href = dataUrl;
+                a.download = `santo-del-giorno-${saint.id}.png`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            };
+
+            const handleShare = async () => {
+                if (isSharing || !saint || saint.name === "Nessun santo trovato") return;
+                
+                setIsSharing(true);
+                
+                try {
+                    const elementToCapture = document.getElementById('saint-card-container');
+                    if (!elementToCapture) {
+                        throw new Error("Elemento della card non trovato");
+                    }
+                    
+                    // Aspetta che l'immagine (dataURL) sia completamente renderizzata
+                    await new Promise(resolve => setTimeout(resolve, 100));
+
+                    const canvas = await html2canvas(elementToCapture, {
+                        logging: false,
+                        useCORS: true, // Necessario per i font
+                        backgroundColor: isDarkMode ? '#111827' : '#F9FAFB',
+                        
+                        // FIX PER TAGLIO: Specifica altezza e larghezza
+                        width: elementToCapture.offsetWidth,
+                        height: elementToCapture.scrollHeight, 
+                        windowWidth: elementToCapture.offsetWidth,
+                        windowHeight: elementToCapture.scrollHeight
+                    });
+                    
+                    const dataUrl = canvas.toDataURL('image/png');
+                    const response = await fetch(dataUrl);
+                    const blob = await response.blob();
+                    const file = new File([blob], 'santo-del-giorno.png', { type: 'image/png' });
+
+                    const shareData = {
+                        title: `Santo del Giorno: ${saint.name}`,
+                        text: `Scopri ${saint.name}, il santo del ${saint.date}!`,
+                        files: [file]
+                    };
+
+                    if (navigator.share && navigator.canShare && navigator.canShare(shareData)) {
+                        await navigator.share(shareData);
+                    } else {
+                        downloadImage(dataUrl, saint);
+                    }
+                } catch (err) {
+                    console.error('Errore condivisione o screenshot:', err);
+                    try {
+                        const canvas = await html2canvas(document.getElementById('saint-card-container'));
+                        const dataUrl = canvas.toDataURL('image/png');
+                        downloadImage(dataUrl, saint);
+                    } catch (downloadErr) {
+                        console.error('Errore fallback download:', downloadErr);
+                    }
+                } finally {
+                    setIsSharing(false);
+                }
+            };
+            
+            const transitionClasses = isTransitioning
+                ? 'opacity-0 scale-95'
+                : 'opacity-100 scale-100';
+
+            return (
+                <div className="flex flex-col items-center justify-center min-h-full p-4 sm:p-6" id="app-container">
+                    <ThemeToggle isDarkMode={isDarkMode} onToggle={handleThemeToggle} />
+                    <ShareButton onClick={handleShare} isSharing={isSharing} />
+                    
+                    <DateNavigator currentDate={currentDate} onDateChange={handleDateChange} />
+                    
+                    <div className={`w-full transition-all duration-300 ease-in-out ${transitionClasses}`}>
+                        {isLoading && <SaintCardSkeleton />}
+                        
+                        <div className={isLoading ? 'hidden' : 'block'}>
+                            <SaintCard 
+                                saint={saint} 
+                                onImageLoad={handleImageLoaded}
+                                isFavorite={saint && isFavorite(saint.id)}
+                                onToggleFavorite={toggleFavorite}
+                            />
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        // Avvia l'app React
+        const container = document.getElementById('root');
+        const root = ReactDOM.createRoot(container);
+        root.render(<App />);
+
+    </script>
+
+</body>
+</html>
+
